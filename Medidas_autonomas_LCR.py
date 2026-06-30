@@ -11,7 +11,7 @@ def audio_message(text: str):
     cmd = f'PowerShell -Command "Add-Type -AssemblyName System.Speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.Speak(\'{text}\');"'
     os.system(cmd)
 
-def escuchar_voz(timeout: int = 5) -> str:
+def escuchar_voz(mensaje_consola: str = "[👂 Escuchando...]", timeout: int = 5) -> str:
     """Activa el micrófono y reconoce la voz del usuario (Speech-to-Text)"""
     recognizer = sr.Recognizer()
     with sr.Microphone() as source:
@@ -19,12 +19,11 @@ def escuchar_voz(timeout: int = 5) -> str:
         recognizer.adjust_for_ambient_noise(source, duration=1)
         
         winsound.Beep(600, 200) # Pitido corto para avisar que ya está escuchando
-        print("[👂 Escuchando... Di 'sí' o 'no']")
+        print(mensaje_consola) # <- Mensaje personalizable
         
         try:
-            # Escucha con límite de tiempo
-            audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=3)
-            # Utiliza Google Speech Recognition (requiere internet)
+            # Subimos phrase_time_limit a 5 para frases más largas
+            audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=5) 
             texto = recognizer.recognize_google(audio, language="es-ES").lower()
             print(f"> Has dicho: '{texto}'")
             return texto
@@ -37,7 +36,6 @@ def escuchar_voz(timeout: int = 5) -> str:
         except sr.RequestError as e:
             print(f"[❌] Error en el servicio de reconocimiento: {e}")
             return ""
-
 def solicitar_nombre() -> str:
     """Solicita el ID por teclado y genera el nombre del archivo"""
     nomin = input("Introduce el ID del componente (teclado): ").strip()
@@ -115,12 +113,12 @@ if __name__ == '__main__':
         audio_message('Por favor, escribe el identificador del componente en la consola.')
         nomdoc = solicitar_nombre()
         
-        # Bucle de confirmación de voz para arrancar
+       # Bucle de confirmación de voz para arrancar
         while True:
-            audio_message('¿Estás listo para iniciar la medida? Responde sí o no.')
-            respuesta = escuchar_voz()
+            audio_message("Cuando estés listo, di 'comenzar medidas' para arrancar, o di 'cancelar'.")
+            respuesta = escuchar_voz("[👂 Escuchando... Di 'comenzar medidas' o 'cancelar']")
             
-            if "sí" in respuesta or "si" in respuesta:
+            if "comenzar" in respuesta and "medidas" in respuesta:
                 audio_message('Iniciando medida. Por favor, no toques los contactos.')
                 start_time = time.perf_counter() 
                 
@@ -134,11 +132,22 @@ if __name__ == '__main__':
                 audio_message('Medida concluida y guardada correctamente.')
                 break
                 
-            elif "no" in respuesta:
+            elif "cancelar" in respuesta:
                 audio_message('Medida cancelada. Esperando confirmación.')
                 time.sleep(2) # Espera un poco antes de volver a preguntar
             else:
-                audio_message('No te he entendido bien.')
+                audio_message('No te he entendido bien. Por favor, repite.')
+        
+        # Preguntar si se desea continuar con otro componente
+        audio_message('¿Deseas medir un componente nuevo? Di continuar o finalizar.')
+        continuar = escuchar_voz("[👂 Escuchando... Di 'continuar' o 'finalizar']")
+        
+        if "finalizar" in continuar:
+            audio_message('Apagando el sistema. Hasta la vista.')
+            break
+        elif "continuar" not in continuar:
+             audio_message('Ante la duda, asumiré que quieres parar. Apagando el sistema.')
+             break
         
         # Preguntar si se desea continuar con otro componente
         audio_message('¿Deseas medir un componente nuevo? Responde sí o no.')
@@ -151,4 +160,4 @@ if __name__ == '__main__':
              break
 
     instr.close()
-    print("==== Sesión Finalizada ====")
+    print("Sesión Finalizada")
